@@ -1,0 +1,66 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+
+// Shows a trailing stop calculated from high/lows combined with an ATR based offset, displayed as a stepline.
+
+//@version=5
+indicator("Best Trailing Stop", overlay=true)
+
+// Input parameters
+min_max_length = input.int(1, "Min/Max Lookback Period", minval=1)
+atr_length = input.int(3, "ATR Length", minval=1)
+atr_multiplier = input.float(0.17, "ATR Multiplier", step=0.1)
+
+// Smoothing options
+smooth_type = input.string("None", "Smoothing Type", options=["None", "SMA", "EMA", "RMA", "WMA"])
+smooth_length = input.int(5, "Smoothing Length", minval=1)
+
+// Smoothing function
+smooth(source, type, length) =>
+    switch type
+        "SMA" => ta.sma(source, length)
+        "EMA" => ta.ema(source, length)
+        "WMA" => ta.wma(source, length)
+        "RMA" => ta.rma(source, length)
+        => source  // "None" or default case
+
+// Calculate bands
+atr = ta.atr(atr_length)
+highest = ta.highest(high, min_max_length)
+lowest = ta.lowest(low, min_max_length)
+upper_band = smooth(highest, smooth_type, smooth_length) + (atr * atr_multiplier)
+lower_band = smooth(lowest, smooth_type, smooth_length) - (atr * atr_multiplier)
+
+// Calculate trend
+var int dir = 1
+var float trend = na
+
+if dir == 1
+    if close <= trend
+        dir := -1
+        trend := upper_band
+    else if na(trend) and not na(lower_band)
+        trend := lower_band
+    else
+        trend := math.max(trend, lower_band)
+else if dir == -1
+    if close >= trend
+        dir := 1
+        trend := lower_band
+    else
+        trend := math.min(trend, upper_band)
+
+// Plot the bands
+plot_upper = dir == -1  ? trend[1] : na
+plot_lower = dir == 1 ? trend[1] : na
+
+var color upper_color = color.new(color.red, 0)
+var color lower_color = color.new(color.green, 0)
+trend_color = trend == -1 ? upper_band : lower_band
+plot(plot_upper, color=upper_color, title="Upper Band", style=plot.style_steplinebr)
+plot(plot_lower, color=lower_color, title="Lower Band", style=plot.style_steplinebr)
+
+// Debug
+plot(upper_band, 'upper', display = display.data_window, editable = false)
+plot(lower_band, 'lower', display = display.data_window, editable = false)
+plot(dir, 'dir', display = display.data_window, editable = false)
+plot(trend, 'trend', display = display.data_window, editable = false)
