@@ -14,3 +14,5 @@ Contains several volatility indicators.
 - Historical Ratio - Ratio of short term volatility to long term.
 - Historical Range - Normalizes short term volatility using the min/max of the long term.
 - Historical Rank - Percentile rank of short term volatility in the long term.
+
+![Volatility Suite](images/volatility-suite.png)
