@@ -1,0 +1,78 @@
+//@version=5
+indicator("Volatility Suite", overlay=false)
+
+// Input parameters
+short_period = input.int(20, "Short Period", minval=1)
+long_period = input.int(100, "Long Period", minval=1)
+
+// Use returns or log returns.
+use_returns = input.bool(true, "Use Returns (Instead of Price)")
+use_log_returns = input.bool(false, "Use Log Returns")
+
+show_vol = input.bool(false, "Show Base Volatility", group='plots')
+show_zscore = input.bool(false, "Show Z-Score", group='plots')
+show_mod_zscore = input.bool(true, "Show Modified Z-Score (Only Uses Price)", group='plots')
+show_sqn = input.bool(true, "Show SQN (Only Uses Returns)", group='plots')
+
+show_hist_ratio = input.bool(true, "Show Historical Volatility Ratio", group='plots', tooltip = "Short Period Vol/Long Period Vol")
+show_range = input.bool(true, "Show Range Normalized", group='plots', tooltip = "Normalized using highest and lowest in last long_period bars")
+show_percentile = input.bool(true, "Show Percentile Rank", group='plots', tooltip = "Percentile ranked in long_period bars")
+
+threshold_line = input.float(0, 'Threshold Line', step=0.1)
+
+const float VOL_SCALE = 1.0
+
+// Calculate base series for volatility
+returns = (close/close[1]) - 1
+log_returns = math.log(close/close[1])
+
+float base_series = close
+if use_returns or use_log_returns
+    base_series := use_log_returns ? log_returns : returns
+
+// Current period volatility
+current_vol = ta.stdev(base_series, short_period) * VOL_SCALE
+z_score = (base_series - ta.sma(base_series, short_period))/current_vol
+
+// Modified Z-Score
+// Really choppy with returns, always uses close. Also not sure if it makes sense with returns.
+median = ta.median(close, short_period)
+mad = ta.median(math.abs(close-median), long_period)
+mod_zscore = 0.6745 * (close - median) / mad
+
+// Historical period volatility
+historical_vol = ta.stdev(base_series, long_period) * VOL_SCALE
+historical_close_vol = ta.stdev(close, long_period) * VOL_SCALE
+hist_norm = current_vol / historical_vol
+
+// Range-Normalized Volatility
+vol_max = ta.highest(current_vol, long_period)
+vol_min = ta.lowest(current_vol, long_period)
+range_normalized = (current_vol - vol_min) / (vol_max - vol_min)
+
+// Percentile Ranked Volatility
+vol_series = ta.percentrank(current_vol, long_period)/100
+
+// 6. SQN (Only uses returns)
+// These are the regime guidelines.
+//   Blue = Bull Volatile >1.7 and higher
+//   Green = Bull Quiet >.6 to 1.7
+//   Yellow = Neutral between .60 to -.60
+//   Red = Bear Quiet -.60 to -1.70
+//   Crimson = Bear Volatile < -1.70 and lower
+sqn_vol = ta.stdev(returns, short_period)
+sqn_ma = ta.sma(returns, short_period)
+sqn = ((sqn_ma*math.sqrt(short_period))/sqn_vol)
+
+// Plotting
+var volatility_type = use_returns ? (use_log_returns ? "Log Returns" : "Simple Returns") : "Price"
+plot(show_vol ? base_series : na, color=color.blue, title="Z-Score")
+plot(show_zscore ? z_score : na, color=color.yellow, title="Z-Score")
+plot(show_mod_zscore ? mod_zscore : na, color=color.aqua, title="Modified Z-Score")
+plot(show_range ? range_normalized : na, color=color.red, title="Range Normalized")
+plot(show_hist_ratio ? hist_norm : na, color=color.green, title="Historical Ratio")
+plot(show_percentile ? vol_series : na, color=color.purple, title="Percentile")
+plot(show_sqn ? sqn : na, color=color.orange, title="SQN")
+
+// Add horizontal lines for reference
+hline(threshold_line, color=color.gray, linestyle=hline.style_solid, linewidth = 1)
