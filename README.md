@@ -16,3 +16,21 @@ Contains several volatility indicators.
 - Historical Rank - Percentile rank of short term volatility in the long term.
 
 ![Volatility Suite](images/volatility-suite.png)
+
+## Futures In Play
+Analyzes futures markets to identify which ones are "in play" based on various volatility and activity metrics.
+Calculates a composite score for each market and analyzes how well different features predict intraday volatility.
+
+Features:
+- Cumulative Volume (CumVol) - Current day's volume relative to average
+- Range Percentage (RangePct) - Current day's range relative to ATR
+- True Range Rank (TrRank) - Previous day's true range percentile
+- Open Interest Rank (OiRank) - Previous day's open interest percentile
+- Implied Volatility Rank (IvRank) - Previous day's IV percentile (where available)
+
+Correlation Analysis:
+- Analyzes how well each feature predicts intraday volatility
+- Uses either Pearson or Spearman correlation (user selectable)
+
+![Futures In Play](images/futures-vol.png)
+
